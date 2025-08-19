@@ -1,0 +1,700 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>翻页时钟</title>
+    <style>
+        /* 基础样式重置 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            transition: background-color 0.8s ease, color 0.8s ease;
+            font-family: Arial, sans-serif;
+            flex-direction: column;
+        }
+
+        /* 初始默认样式（夜间） */
+        .dark {
+            background-color: #1e1e1e;
+            color: #fff;
+        }
+
+        .light {
+            background-color: #fff;
+            color: #1e1e1e;
+        }
+
+        /* 时钟容器 */
+        .clock {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            margin-bottom: 30px;
+        }
+
+        /* 翻页数字容器 */
+        .flip-box {
+            width: 120px;
+            height: 180px;
+            perspective: 1000px;
+            position: relative;
+        }
+
+        /* 翻页数字 */
+        .flip {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* 翻页数字的前后两面 */
+        .flip-front,
+        .flip-back {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            backface-visibility: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 80px;
+            font-weight: bold;
+            border-radius: 8px;
+            transition: background-color 0.8s ease, color 0.8s ease, box-shadow 0.8s ease;
+        }
+
+        /* 翻页背面 */
+        .flip-back {
+            transform: rotateX(180deg);
+        }
+
+        /* 翻转动画 */
+        .flipping {
+            transform: rotateX(180deg);
+        }
+
+        /* 分隔符 */
+        .separator {
+            font-size: 80px;
+            font-weight: bold;
+            align-self: flex-start;
+            margin-top: 20px;
+        }
+
+        /* 日期显示（最下方） */
+        .date {
+            position: absolute;
+            bottom: 60px;
+            font-size: 16px;
+            opacity: 0.8;
+            text-align: center;
+        }
+
+        /* 倒计时显示 */
+        .countdown {
+            position: absolute;
+            bottom: 30px;
+            font-size: 16px;
+            opacity: 0.8;
+            text-align: center;
+        }
+
+        /* 名言显示 */
+        .motto {
+            position: absolute;
+            bottom: 10px;
+            font-size: 14px;
+            opacity: 0.7;
+            text-align: center;
+            font-style: italic;
+        }
+
+        /* 日出日落信息（仅自动模式显示，在日期上方） */
+        .sun-info {
+            position: absolute;
+            bottom: 120px;
+            font-size: 14px;
+            opacity: 0.7;
+            text-align: center;
+            display: none;
+        }
+
+        /* 颜色信息（仅自动模式显示） */
+        .color-info {
+            position: absolute;
+            bottom: 90px;
+            font-size: 14px;
+            opacity: 0.7;
+            text-align: center;
+            display: none;
+        }
+
+        /* 日夜模式切换容器 */
+        .theme-toggle-container {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            display: inline-block;
+        }
+
+        /* 切换按钮 */
+        .toggle-btn {
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.8s ease, color 0.8s ease;
+        }
+
+        /* 选项菜单 */
+        .theme-options {
+            position: absolute;
+            top: 100%;
+            right: 0;
+            margin-top: 5px;
+            border-radius: 4px;
+            overflow: hidden;
+            opacity: 0;
+            visibility: hidden;
+            transform: translateY(-10px);
+            transition: opacity 0.3s ease, transform 0.3s ease, visibility 0.3s,
+                        background-color 0.8s ease, color 0.8s ease, box-shadow 0.8s ease;
+            z-index: 100;
+            min-width: 120px;
+        }
+
+        /* 显示选项菜单 */
+        .theme-toggle-container:hover .theme-options {
+            opacity: 1;
+            visibility: visible;
+            transform: translateY(0);
+        }
+
+        /* 选项按钮 */
+        .theme-option {
+            display: block;
+            width: 100%;
+            background: none;
+            border: none;
+            padding: 10px 20px;
+            text-align: left;
+            cursor: pointer;
+            transition: background-color 0.2s ease, color 0.8s ease;
+        }
+
+        .theme-option.active {
+            font-weight: bold;
+        }
+
+        /* 全屏按钮 */
+        .fullscreen-btn {
+            position: absolute;
+            top: 20px;
+            right: 140px;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.8s ease, color 0.8s ease;
+        }
+    </style>
+</head>
+<body class="dark">
+    <!-- 日夜模式切换容器 -->
+    <div class="theme-toggle-container">
+        <button class="toggle-btn">日夜模式</button>
+        <div class="theme-options">
+            <button class="theme-option" data-theme="light">白天</button>
+            <button class="theme-option active" data-theme="dark">夜间</button>
+            <button class="theme-option" data-theme="auto">自动</button>
+        </div>
+    </div>
+
+    <!-- 全屏按钮 -->
+    <button class="fullscreen-btn" onclick="toggleFullScreen()">全屏</button>
+
+    <!-- 时钟容器 -->
+    <div class="clock">
+        <!-- 小时十位 -->
+        <div class="flip-box">
+            <div class="flip" id="hour-tens">
+                <div class="flip-front">0</div>
+                <div class="flip-back">0</div>
+            </div>
+        </div>
+        <!-- 小时个位 -->
+        <div class="flip-box">
+            <div class="flip" id="hour-units">
+                <div class="flip-front">0</div>
+                <div class="flip-back">0</div>
+            </div>
+        </div>
+        <!-- 分隔符 -->
+        <div class="separator">:</div>
+        <!-- 分钟十位 -->
+        <div class="flip-box">
+            <div class="flip" id="minute-tens">
+                <div class="flip-front">0</div>
+                <div class="flip-back">0</div>
+            </div>
+        </div>
+        <!-- 分钟个位 -->
+        <div class="flip-box">
+            <div class="flip" id="minute-units">
+                <div class="flip-front">0</div>
+                <div class="flip-back">0</div>
+            </div>
+        </div>
+        <!-- 分隔符 -->
+        <div class="separator">:</div>
+        <!-- 秒数十位 -->
+        <div class="flip-box">
+            <div class="flip" id="second-tens">
+                <div class="flip-front">0</div>
+                <div class="flip-back">0</div>
+            </div>
+        </div>
+        <!-- 秒数个位 -->
+        <div class="flip-box">
+            <div class="flip" id="second-units">
+                <div class="flip-front">0</div>
+                <div class="flip-back">0</div>
+            </div>
+        </div>
+    </div>
+    <!-- 日出日落信息（仅自动模式显示） -->
+    <div class="sun-info" id="sun-info"></div>
+    <!-- 颜色信息（仅自动模式显示） -->
+    <!-- <div class="color-info" id="color-info"></div> -->
+    <!-- 日期显示 -->
+    <div class="date" id="date"></div>
+    <!-- 倒计时显示 -->
+    <div class="countdown" id="countdown"></div>
+    <!-- 名言显示 -->
+    <div class="motto">你别忘了暑假结束前你要完成所有基础和大部分强化</div>
+
+    <script>
+        // 全局变量
+        let currentTheme = 'dark'; // 默认夜间模式
+        let sunrise = null; // 日出时间（分钟，通过API获取）
+        let sunset = null;   // 日落时间（分钟，通过API获取）
+        let solarNoon = null; // 正午时间（分钟）
+        const midnight = 0;   // 午夜时间（分钟）
+        let lastHue = 180; // 记录上一秒色相，确保平滑过渡
+        // 经纬度设置（可根据需要修改）
+        const lat = 0; // 请输入纬度
+        const lng = 0; // 请输入经度
+        
+        // 目标日期设置（可修改为任意日期）
+        const targetDate = new Date(2025, 7, 31); // 月份是0-based，所以8月是7
+        
+        // 基础主题颜色（严格保持静态主题不变）
+        const darkColors = {
+            background: [15, 15, 15],     // 午夜最暗（纯黑）
+            text: [240, 240, 240],        // 夜间文字
+            flip: [40, 40, 40],           // 夜间翻页块
+            buttonHover: [60, 60, 60]
+        };
+        
+        const lightColors = {
+            background: [255, 255, 255],  // 正午最亮（纯白）
+            text: [15, 15, 15],           // 白天文字
+            flip: [240, 240, 240],        // 白天翻页块
+            buttonHover: [220, 220, 220]
+        };
+
+        // 初始化
+        window.addEventListener('DOMContentLoaded', () => {
+            applyStaticTheme('dark');
+            updateTime();
+            setInterval(updateTime, 1000);
+            setupThemeOptions();
+        });
+
+        // 获取日出日落时间
+        function getSunTimes() {
+            const url = `https://api.sunrise-sunset.org/json?lat=${lat}&lng=${lng}&tzid=Asia/shanghai`;
+            
+            fetch(url)
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'OK') {
+                        sunrise = parseTime(data.results.sunrise);
+                        sunset = parseTime(data.results.sunset);
+                        solarNoon = parseTime(data.results.solar_noon);
+                        
+                        // 显示日出日落信息
+                        const sunInfo = document.getElementById('sun-info');
+                        sunInfo.textContent = `日出: ${formatTime(sunrise)} | 日落: ${formatTime(sunset)}`;
+						//sunInfo.textContent = `日出: ${formatTime(sunrise)} | 日落: ${formatTime(sunset)} | 正午: ${formatTime(solarNoon)}`;
+                        sunInfo.style.display = 'block';
+                        
+                        // 立即应用一次渐变主题
+                        applyGradientTheme();
+                    } else {
+                        console.error('获取日出日落时间失败:', data.status);
+                    }
+                })
+                .catch(error => {
+                    console.error('请求日出日落API失败:', error);
+                });
+        }
+
+        // 解析时间字符串为分钟数
+        function parseTime(timeStr) {
+            const [time, period] = timeStr.split(' ');
+            const [hours, minutes] = time.split(':').map(Number);
+            
+            let totalMinutes = hours * 60 + minutes;
+            
+            if (period === 'PM' && hours !== 12) {
+                totalMinutes += 12 * 60;
+            }
+            if (period === 'AM' && hours === 12) {
+                totalMinutes = 0;
+            }
+            
+            return totalMinutes;
+        }
+
+        // 将分钟数格式化为时间字符串
+        function formatTime(minutes) {
+            const hours = Math.floor(minutes / 60);
+            const mins = minutes % 60;
+            return `${hours.toString().padStart(2, '0')}:${mins.toString().padStart(2, '0')}`;
+        }
+
+        // 计算距离目标日期的天数
+        function calculateDaysRemaining() {
+            const now = new Date();
+            // 计算两个日期之间的毫秒差
+            const timeDiff = targetDate - now;
+            // 转换为天数（向上取整）
+            const daysRemaining = Math.ceil(timeDiff / (1000 * 3600 * 24));
+            
+            // 格式化目标日期为X年X月X日
+            const targetYear = targetDate.getFullYear();
+            const targetMonth = targetDate.getMonth() + 1; // 月份是0-based
+            const targetDay = targetDate.getDate();
+            
+            // 根据剩余天数返回不同文本
+            if (daysRemaining < 0) {
+                return `距离${targetYear}年${targetMonth}月${targetDay}日已经过去${Math.abs(daysRemaining)}天`;
+            } else if (daysRemaining === 0) {
+                return `今天就是${targetYear}年${targetMonth}月${targetDay}日`;
+            } else {
+                return `距离${targetYear}年${targetMonth}月${targetDay}日还有${daysRemaining}天`;
+            }
+        }
+
+        // RGB转16进制
+        function rgbToHex(r, g, b) {
+            return `#${((1 << 24) + (r << 16) + (g << 8) + b).toString(16).slice(1).toUpperCase()}`;
+        }
+
+        // 判断是否为白天（日出到日落）
+        function isDayTime(currentMinutes) {
+            if (sunrise === null || sunset === null) return false;
+            if (sunrise <= sunset) {
+                return currentMinutes >= sunrise && currentMinutes <= sunset;
+            } else {
+                return currentMinutes >= sunrise || currentMinutes <= sunset;
+            }
+        }
+
+        // 计算亮度比例（0-1）：正午最亮(1)，午夜最暗(0)
+        function getBrightnessRatio(currentMinutes) {
+            if (solarNoon === null) return 0;
+            
+            // 计算与正午的时间差（分钟）
+            const noonDiff = Math.abs(currentMinutes - solarNoon);
+            // 最大可能差值是12小时（720分钟）
+            const ratio = 1 - (noonDiff / 720);
+            return Math.max(0, Math.min(1, ratio));
+        }
+
+        // HSL转RGB
+        function hslToRgb(h, s, l) {
+            h /= 360;
+            let r, g, b;
+
+            if (s === 0) {
+                r = g = b = l; // 灰度
+            } else {
+                const hue2rgb = (p, q, t) => {
+                    if (t < 0) t += 1;
+                    if (t > 1) t -= 1;
+                    if (t < 1/6) return p + (q - p) * 6 * t;
+                    if (t < 1/2) return q;
+                    if (t < 2/3) return p + (q - p) * (2/3 - t) * 6;
+                    return p;
+                };
+
+                const q = l < 0.5 ? l * (1 + s) : l + s - l * s;
+                const p = 2 * l - q;
+                r = hue2rgb(p, q, h + 1/3);
+                g = hue2rgb(p, q, h);
+                b = hue2rgb(p, q, h - 1/3);
+            }
+
+            return [Math.round(r * 255), Math.round(g * 255), Math.round(b * 255)];
+        }
+
+        // 生成每秒变化的背景色
+        function generateDynamicColor(currentMinutes, currentSeconds) {
+            const isDay = isDayTime(currentMinutes);
+            const brightnessRatio = getBrightnessRatio(currentMinutes);
+            
+            // 亮度计算
+            const baseBrightness = isDay 
+                ? 0.7 + (brightnessRatio * 0.3)  // 白天亮度范围：0.7-1.0
+                : 0.1 + (brightnessRatio * 0.3); // 夜间亮度范围：0.1-0.4
+            
+            // 色相变化（增强变化幅度，确保更明显）
+            const timeSeed = currentMinutes * 60 + currentSeconds;
+            const hueChange = (timeSeed * 5) % 360; // 5度/秒，变化更明显
+            const smoothHue = lastHue + ((hueChange - lastHue) * 0.7); // 平滑过渡
+            lastHue = smoothHue;
+            
+            // 饱和度控制
+            const saturation = isDay 
+                ? 0.4 + (Math.sin(timeSeed * 0.1) * 0.2) // 白天饱和度：0.2-0.6
+                : 0.3 + (Math.sin(timeSeed * 0.2) * 0.15); // 夜间饱和度：0.15-0.45
+            
+            return hslToRgb(smoothHue, saturation, baseBrightness);
+        }
+
+        // 应用渐变主题（自动模式）
+        function applyGradientTheme() {
+            if (!sunrise || !sunset || !solarNoon) return;
+            
+            const now = new Date();
+            const currentMinutes = now.getHours() * 60 + now.getMinutes();
+            const currentSeconds = now.getSeconds();
+            const isDay = isDayTime(currentMinutes);
+            
+            // 生成每秒变化的背景色
+            const bgColor = generateDynamicColor(currentMinutes, currentSeconds);
+            
+            // 文字色：白天黑/夜间白
+            const textColor = isDay ? lightColors.text : darkColors.text;
+            
+            // 翻页块颜色：固定使用白天/夜间主题色
+            const flipColor = isDay ? lightColors.flip : darkColors.flip;
+            const buttonHover = isDay ? lightColors.buttonHover : darkColors.buttonHover;
+            
+            // 更新颜色信息显示
+            /* const bgHex = rgbToHex(bgColor[0], bgColor[1], bgColor[2]);
+            const flipHex = rgbToHex(flipColor[0], flipColor[1], flipColor[2]);
+            document.getElementById('color-info').textContent = `背景色: ${bgHex} | 翻页块: ${flipHex}`;
+            document.getElementById('color-info').style.display = 'block'; */
+            
+            // 应用背景和文字色
+            const body = document.body;
+            body.style.backgroundColor = `rgb(${bgColor[0]}, ${bgColor[1]}, ${bgColor[2]})`;
+            body.style.color = `rgb(${textColor[0]}, ${textColor[1]}, ${textColor[2]})`;
+            
+            // 应用翻页块颜色
+            const flipElements = document.querySelectorAll('.flip-front, .flip-back');
+            flipElements.forEach(el => {
+                el.style.backgroundColor = `rgb(${flipColor[0]}, ${flipColor[1]}, ${flipColor[2]})`;
+                el.style.color = `rgb(${textColor[0]}, ${textColor[1]}, ${textColor[2]})`;
+                el.style.boxShadow = isDay 
+                    ? '0 4px 12px rgba(0, 0, 0, 0.15)' 
+                    : '0 4px 12px rgba(0, 0, 0, 0.5)';
+            });
+            
+            // 应用按钮样式
+            const toggleBtn = document.querySelector('.toggle-btn');
+            const fullscreenBtn = document.querySelector('.fullscreen-btn');
+            const themeOptions = document.querySelector('.theme-options');
+            
+            toggleBtn.style.backgroundColor = `rgb(${flipColor[0]}, ${flipColor[1]}, ${flipColor[2]})`;
+            toggleBtn.style.color = `rgb(${textColor[0]}, ${textColor[1]}, ${textColor[2]})`;
+            
+            fullscreenBtn.style.backgroundColor = `rgb(${flipColor[0]}, ${flipColor[1]}, ${flipColor[2]})`;
+            fullscreenBtn.style.color = `rgb(${textColor[0]}, ${textColor[1]}, ${textColor[2]})`;
+            
+            themeOptions.style.backgroundColor = `rgb(${flipColor[0]}, ${flipColor[1]}, ${flipColor[2]})`;
+            themeOptions.style.color = `rgb(${textColor[0]}, ${textColor[1]}, ${textColor[2]})`;
+            
+            // 主题选项按钮样式
+            const themeOptionBtns = document.querySelectorAll('.theme-option');
+            themeOptionBtns.forEach(btn => {
+                btn.style.color = `rgb(${textColor[0]}, ${textColor[1]}, ${textColor[2]})`;
+                btn.onmouseover = () => {
+                    btn.style.backgroundColor = `rgb(${buttonHover[0]}, ${buttonHover[1]}, ${buttonHover[2]})`;
+                };
+                btn.onmouseout = () => {
+                    btn.style.backgroundColor = 'transparent';
+                };
+                if (btn.classList.contains('active')) {
+                    btn.style.backgroundColor = isDay 
+                        ? 'rgba(0, 0, 0, 0.2)' 
+                        : 'rgba(255, 255, 255, 0.2)';
+                }
+            });
+        }
+
+        // 应用静态主题
+        function applyStaticTheme(theme) {
+            const isDay = theme === 'light';
+            const palette = isDay ? lightColors : darkColors;
+            
+            const body = document.body;
+            const flipElements = document.querySelectorAll('.flip-front, .flip-back');
+            const toggleBtn = document.querySelector('.toggle-btn');
+            const fullscreenBtn = document.querySelector('.fullscreen-btn');
+            const themeOptions = document.querySelector('.theme-options');
+            const themeOptionBtns = document.querySelectorAll('.theme-option');
+            
+            // 静态主题背景色
+            body.style.backgroundColor = `rgb(${palette.background[0]}, ${palette.background[1]}, ${palette.background[2]})`;
+            body.style.color = `rgb(${palette.text[0]}, ${palette.text[1]}, ${palette.text[2]})`;
+            
+            // 翻页块颜色
+            flipElements.forEach(el => {
+                el.style.backgroundColor = `rgb(${palette.flip[0]}, ${palette.flip[1]}, ${palette.flip[2]})`;
+                el.style.color = `rgb(${palette.text[0]}, ${palette.text[1]}, ${palette.text[2]})`;
+                el.style.boxShadow = isDay 
+                    ? '0 4px 12px rgba(0, 0, 0, 0.15)' 
+                    : '0 4px 12px rgba(0, 0, 0, 0.5)';
+            });
+            
+            // 按钮样式
+            toggleBtn.style.backgroundColor = `rgb(${palette.flip[0]}, ${palette.flip[1]}, ${palette.flip[2]})`;
+            toggleBtn.style.color = `rgb(${palette.text[0]}, ${palette.text[1]}, ${palette.text[2]})`;
+            
+            fullscreenBtn.style.backgroundColor = `rgb(${palette.flip[0]}, ${palette.flip[1]}, ${palette.flip[2]})`;
+            fullscreenBtn.style.color = `rgb(${palette.text[0]}, ${palette.text[1]}, ${palette.text[2]})`;
+            
+            themeOptions.style.backgroundColor = `rgb(${palette.flip[0]}, ${palette.flip[1]}, ${palette.flip[2]})`;
+            themeOptions.style.color = `rgb(${palette.text[0]}, ${palette.text[1]}, ${palette.text[2]})`;
+            
+            // 选项按钮样式
+            themeOptionBtns.forEach(btn => {
+                btn.style.color = `rgb(${palette.text[0]}, ${palette.text[1]}, ${palette.text[2]})`;
+                btn.onmouseover = () => {
+                    btn.style.backgroundColor = `rgb(${palette.buttonHover[0]}, ${palette.buttonHover[1]}, ${palette.buttonHover[2]})`;
+                };
+                btn.onmouseout = () => {
+                    btn.style.backgroundColor = 'transparent';
+                };
+                if (btn.classList.contains('active')) {
+                    btn.style.backgroundColor = isDay 
+                        ? 'rgba(0, 0, 0, 0.2)' 
+                        : 'rgba(255, 255, 255, 0.2)';
+                }
+            });
+        }
+
+        // 主题选项设置
+        function setupThemeOptions() {
+            const options = document.querySelectorAll('.theme-option');
+            const sunInfo = document.getElementById('sun-info');
+            const colorInfo = document.getElementById('color-info');
+            
+            options.forEach(option => {
+                option.addEventListener('click', () => {
+                    // 强制移除所有选项的active类
+                    options.forEach(opt => opt.classList.remove('active'));
+                    // 为当前点击的选项添加active类
+                    option.classList.add('active');
+                    // 更新当前主题
+                    currentTheme = option.dataset.theme;
+                    
+                    if (currentTheme === 'auto') {
+                        // 自动模式：获取日出日落时间并立即应用
+                        getSunTimes();
+                        sunInfo.style.display = 'block';
+                        colorInfo.style.display = 'block';
+                        // 立即强制更新一次颜色
+                        setTimeout(applyGradientTheme, 100);
+                    } else {
+                        // 静态模式：隐藏额外信息，应用对应主题
+                        sunInfo.style.display = 'none';
+                        colorInfo.style.display = 'none';
+                        applyStaticTheme(currentTheme);
+                    }
+                });
+            });
+        }
+
+        // 更新时间
+        function updateTime() {
+            const now = new Date();
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const seconds = now.getSeconds().toString().padStart(2, '0');
+            const dateStr = now.toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                weekday: 'long'
+            });
+
+            // 更新日期显示
+            document.getElementById('date').textContent = dateStr;
+            
+            // 更新倒计时显示
+            document.getElementById('countdown').textContent = calculateDaysRemaining();
+
+            // 更新翻页数字
+            flipDigit('hour-tens', hours[0]);
+            flipDigit('hour-units', hours[1]);
+            flipDigit('minute-tens', minutes[0]);
+            flipDigit('minute-units', minutes[1]);
+            flipDigit('second-tens', seconds[0]);
+            flipDigit('second-units', seconds[1]);
+
+            // 自动模式下每秒更新颜色
+            if (currentTheme === 'auto') {
+                applyGradientTheme();
+            }
+        }
+
+        // 翻页动画
+        function flipDigit(elementId, newDigit) {
+            const flipElement = document.getElementById(elementId);
+            const front = flipElement.querySelector('.flip-front');
+            const back = flipElement.querySelector('.flip-back');
+
+            if (front.textContent === newDigit) return;
+
+            back.textContent = newDigit;
+            flipElement.classList.add('flipping');
+
+            setTimeout(() => {
+                front.textContent = newDigit;
+                flipElement.classList.remove('flipping');
+            }, 600);
+        }
+
+        // 全屏切换
+        function toggleFullScreen() {
+            try {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen();
+                } else {
+                    if (document.exitFullscreen) document.exitFullscreen();
+                }
+            } catch (err) {
+                console.error(`全屏操作错误: ${err.message}`);
+            }
+        }
+    </script>
+</body>
+</html>
+    

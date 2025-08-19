@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>翻页时钟</title>
+    <style>
+        /* 基础样式重置 */
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #1e1e1e;
+            color: #fff;
+            transition: background-color 0.3s, color 0.3s;
+            font-family: Arial, sans-serif;
+        }
+
+        /* 深色模式 */
+        .dark {
+            background-color: #1e1e1e;
+            color: #fff;
+        }
+
+        /* 浅色模式 */
+        .light {
+            background-color: #fff;
+            color: #1e1e1e;
+        }
+
+        /* 时钟容器 */
+        .clock {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        /* 翻页数字容器 */
+        .flip-box {
+            width: 120px;
+            height: 180px;
+            perspective: 1000px;
+            position: relative;
+        }
+
+        /* 翻页数字 */
+        .flip {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            transform-style: preserve-3d;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        /* 翻页数字的前后两面 */
+        .flip-front,
+        .flip-back {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            backface-visibility: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 80px;
+            font-weight: bold;
+            background-color: #333;
+            color: #fff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+            transition: background-color 0.3s, color 0.3s;
+        }
+
+        /* 浅色模式下的翻页数字 */
+        .light .flip-front,
+        .light .flip-back {
+            background-color: #eee;
+            color: #333;
+        }
+
+        /* 翻页背面 */
+        .flip-back {
+            transform: rotateX(180deg);
+        }
+
+        /* 翻转动画 */
+        .flipping {
+            transform: rotateX(180deg);
+        }
+
+        /* 分隔符 */
+        .separator {
+            font-size: 80px;
+            font-weight: bold;
+            align-self: flex-start;
+            margin-top: 20px; /* 垂直对齐调整 */
+        }
+
+        /* 日期显示 */
+        .date {
+            position: absolute;
+            bottom: 20px;
+            font-size: 16px;
+            opacity: 0.8;
+        }
+
+        /* 深浅色切换按钮 */
+        .toggle-btn {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background-color: #333;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .light .toggle-btn {
+            background-color: #eee;
+            color: #333;
+        }
+
+        .toggle-btn:hover {
+            opacity: 0.9;
+        }
+
+        /* 全屏按钮 */
+        .fullscreen-btn {
+            position: absolute;
+            top: 20px;
+            right: 100px;
+            background-color: #333;
+            color: #fff;
+            border: none;
+            padding: 10px 20px;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+
+        .light .fullscreen-btn {
+            background-color: #eee;
+            color: #333;
+        }
+
+        .fullscreen-btn:hover {
+            opacity: 0.9;
+        }
+    </style>
+</head>
+<body class="dark">
+    <!-- 深浅色切换按钮 -->
+    <button class="toggle-btn" onclick="toggleTheme()">日夜模式</button>
+    <!-- 全屏按钮 -->
+    <button class="fullscreen-btn" onclick="toggleFullScreen()">全屏</button>
+    <!-- 时钟容器 -->
+    <div class="clock">
+        <!-- 小时十位 -->
+        <div class="flip-box">
+            <div class="flip" id="hour-tens">
+                <div class="flip-front">0</div>
+                <div class="flip-back">0</div>
+            </div>
+        </div>
+        <!-- 小时个位 -->
+        <div class="flip-box">
+            <div class="flip" id="hour-units">
+                <div class="flip-front">0</div>
+                <div class="flip-back">0</div>
+            </div>
+        </div>
+        <!-- 分隔符 -->
+        <div class="separator">:</div>
+        <!-- 分钟十位 -->
+        <div class="flip-box">
+            <div class="flip" id="minute-tens">
+                <div class="flip-front">0</div>
+                <div class="flip-back">0</div>
+            </div>
+        </div>
+        <!-- 分钟个位 -->
+        <div class="flip-box">
+            <div class="flip" id="minute-units">
+                <div class="flip-front">0</div>
+                <div class="flip-back">0</div>
+            </div>
+        </div>
+        <!-- 分隔符 -->
+        <div class="separator">:</div>
+        <!-- 秒数十位 -->
+        <div class="flip-box">
+            <div class="flip" id="second-tens">
+                <div class="flip-front">0</div>
+                <div class="flip-back">0</div>
+            </div>
+        </div>
+        <!-- 秒数个位 -->
+        <div class="flip-box">
+            <div class="flip" id="second-units">
+                <div class="flip-front">0</div>
+                <div class="flip-back">0</div>
+            </div>
+        </div>
+    </div>
+    <!-- 日期显示 -->
+    <div class="date" id="date"></div>
+
+    <script>
+        // 初始化时间
+        updateTime();
+        // 每秒更新时间
+        setInterval(updateTime, 1000);
+
+        // 更新时间函数
+        function updateTime() {
+            const now = new Date();
+            const hours = now.getHours().toString().padStart(2, '0');
+            const minutes = now.getMinutes().toString().padStart(2, '0');
+            const seconds = now.getSeconds().toString().padStart(2, '0');
+            const dateStr = now.toLocaleDateString('zh-CN', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                weekday: 'long'
+            });
+
+            // 更新日期显示
+            document.getElementById('date').textContent = dateStr;
+
+            // 更新小时（十位和个位）
+            flipDigit('hour-tens', hours[0]);
+            flipDigit('hour-units', hours[1]);
+
+            // 更新分钟（十位和个位）
+            flipDigit('minute-tens', minutes[0]);
+            flipDigit('minute-units', minutes[1]);
+
+            // 更新秒数（十位和个位）
+            flipDigit('second-tens', seconds[0]);
+            flipDigit('second-units', seconds[1]);
+        }
+
+        // 翻页动画函数
+        function flipDigit(elementId, newDigit) {
+            const flipElement = document.getElementById(elementId);
+            const front = flipElement.querySelector('.flip-front');
+            const back = flipElement.querySelector('.flip-back');
+
+            // 如果数字未变化，跳过动画
+            if (front.textContent === newDigit) return;
+
+            // 设置背面数字
+            back.textContent = newDigit;
+            // 触发翻转动画
+            flipElement.classList.add('flipping');
+
+            // 动画结束后重置状态
+            setTimeout(() => {
+                front.textContent = newDigit;
+                flipElement.classList.remove('flipping');
+            }, 600);
+        }
+
+        // 切换深浅色模式
+        function toggleTheme() {
+            const body = document.body;
+            body.classList.toggle('dark');
+            body.classList.toggle('light');
+        }
+
+        // 全屏切换函数
+        function toggleFullScreen() {
+            if (!document.fullscreenElement) {
+                document.documentElement.requestFullscreen().catch(err => {
+                    console.error('进入全屏失败:', err);
+                });
+            } else {
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                }
+            }
+        }
+    </script>
+</body>
+</html>
